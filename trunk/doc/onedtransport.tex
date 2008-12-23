@@ -74,6 +74,62 @@ the reflecting boundary conditions $\psi(0, \mu) = \psi(0, -\mu)$ for $0 < \mu
 $$ \psi_{n}(0) = \psi_{N + 1 - n}(0) \,, \quad N/2 + 1 < n < N  \,.$$
 
 For vacuum boundaries, of course, $\psi_{n}(0) = 0$ for the incoming directions.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{The $k$-eigenvalue problem}
+In the eigenvalue problem, the source $Q$ is replaced with a fission production
+term, the product of the fission cross section, the number of neutrons emitted
+per fission, and the scalar flux. (This gives the space-dependent production
+rate of fission neutrons.)
+It is scaled by $1/k$, a value which balances the production and loss
+terms in the equation. Fission neutrons are always assumed to be emitted
+isotropically, and since this is a one-group problem, $\chi = 1$. 
+\begin{multline}
+  \mu_n \oder{\psi_n}{x}(x) + \Sigma_t(x) \psi_n(x) 
+\\
+  = \sum_{l=0}^{L}  \frac{2l+1}{2} \Sigma_{sl}(x) P_{l}(\mu_n)
+  \sum_{n'=1}^{N} w_{n'} P_{l} (\mu_n') \psi_{n'}(x)
+  + \frac{1}{k} \nu\Sigma_f(x) \sum_{n'=1}^{N} w_{n'} \psi_{n'}(x)
+  \label{eq:fissionsn}
+\end{multline}
+
+In operator notation, Eq.~\eqref{eq:fissionsn} can be
+written as
+\begin{equation}
+\op{L} \psi = \op{M} \op{S} \op{D} \psi +  \frac{1}{k} \op{F} \op{D} \psi \,,
+  \label{eq:fissionoperator}
+\end{equation}
+
+where $\op{L}$ is the loss (leakage and absorption) operator; 
+$\op{S}$ is the scattering operator, which works on the Legendre moments of
+the angular flux; $\op{D}$ is the ``discrete-to-moments'' operator, which
+integrates
+the different moments of the discrete moments angular flux (mapping the
+discretized angular flux to Legendre moments); $\op{M}$ is the
+``moments-to-discrete'' operator; and $\op{F}$ is the
+fission production operator. Moving the scattering operator to the left, and
+inverting the transport operator,
+$$ k \psi = (\op{L} - \op{M} \op{S} \op{D} )^{-1}  (\op{F} \op{D}) \psi \,,$$
+is easily recognized as an eigenvalue problem.
+
+[Note: in most computer programs, the full angular flux is never stored due to
+memory requirements. Instead, only the scalar flux (and higher moments if
+anisotropic scattering is present) is stored, using $\phi = \op{D} \psi$. Then,
+when the transport sweep is performed, the flux moments are expanded via the
+$\op{D}$ moment-to-discrete operator. Eq.~\eqref{eq:fissionoperator} is then
+usually
+\begin{align*}
+\op{L} \psi &= \op{M} \op{S} \op{D} \psi +  \frac{1}{k} \op{F} [\op{D} \psi]
+\\
+( \op{L} -  \op{M} \op{S} \op{D} ) \psi &=  \frac{1}{k} \op{F} \phi
+\\
+k \psi &=  ( \op{L} - \op{M} \op{S} \op{D} ) ^{-1} \op{F} \phi
+\\
+k \op{D} \psi &= \op{D}  ( \op{L} - \op{M} \op{S} \op{D} ) ^{-1} \op{F} \phi
+\\
+k \phi &= \op{D} ( \op{L} - \op{M} \op{S} \op{D} ) ^{-1} \op{F} \phi
+\end{align*}
+See Ref.~\cite{War2004a} for more information on the detailed eigenvalue
+problem.]
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Infinite medium}
@@ -102,12 +158,7 @@ P_{l}(\mu_n) \right] \left[ \sum_{n'=1}^{N} w_{n'} P_{l} (\mu_n') \psi_{n'}
 \right] + \frac{1}{2} Q_0 [2] $$
 
 If the Gauss-Legendre quadrature set is used, then from
-\cite[p.121]{Lew1984}\footnote{I'm not entirely sure this is right: the
-normalization constant perhaps should be $(2)/(2l+1)$. In Lewis \& Miller,
-the Legendre moments are written with an extra $\frac{1}{2}$ factor on the
-summation or integral (and in compensation, the factor of 2 in the
-scattering term is left out).  That formulation does not agree with me: the
-scalar flux is an integral over all directions, not an average.}:
+\cite[p.121]{Lew1984}:
 $$ \sum_{n=1}^{N} w_{n} P_{l}(\mu_n) = 2 \delta_{l0} \,, l = 0,\ldots, N-1 \,.$$
 In this case, the scattering term collapses and the equation becomes
 \begin{align*}

@@ -1,0 +1,193 @@
+\documentclass[]{SRJcommon}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\title{One-dimensional computational transport}
+\author{Seth R.~Johnson}
+\date{2008/12/21}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+ \makeatletter
+ \hypersetup{pdfauthor={\@author}, pdftitle={\@title}}
+ \makeatother
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\maketitle
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Exact one-group}
+We consider the one-dimensional transport equation:
+$$
+\mu \oder{\psi}{x}( x, \mu) + \Sigma_t(x) \psi(x,\mu) 
+= \int_{-1}^{1} \Sigma_{s}(\mu \mu') \psi(x,\mu')  \ud\mu' 
+  + Q(x, \mu)
+$$
+or, writing the scattering in terms of Legendre polynomials, truncating to the
+$L$th polynomial,
+\begin{subequations}
+  \label{eq:exactwithbc}
+\begin{equation}
+\mu \pder{\psi}{x}( x, \mu) + \Sigma_t(x) \psi(x,\mu) 
+= \sum_{l=0}^{L}  \frac{2l+1}{2} \Sigma_{sl}(x) P_{l}(\mu)
+  \int_{-1}^{1} P_{l} (\mu') \psi(x,\mu')  \ud\mu' 
+  + Q(x, \mu)\,,
+  \label{eq:exact}
+\end{equation}
+for $0 \le x \le X$ and $-1 < \mu < 1$. This equation also has the boundary
+conditions
+\begin{align}
+  \psi(0, \mu) &= \psi^L(\mu) \,, \quad 0 \le \mu < 1 
+  \\
+  \psi(X, \mu) &= \psi^R(\mu) \,, \quad -1 < \mu \le 0 \,.
+\end{align}
+\end{subequations}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Discrete ordinates}
+To formulate the discrete ordinates approximation, we let $\psi(\mu)$ only hold
+on $N$ specific ordinate directions, each one with angle $\mu_n$ and weight
+$w_n$. (The weights satisfy $\sum_{n=1}^{N} w_n = 2$, analogous to how
+$\int_{-1}^{1} \ud \mu = 1$.)
+The angular flux along each direction is $\psi(\mu_n) = \psi_n$.
+Also, any integration over angle becomes a quadrature sum, so that
+$$ \int_{-1}^{1} P_{l} (\mu') \psi(x,\mu')  \ud\mu'
+\lra
+\sum_{n'=1}^{N} w_{n'} P_{l} (\mu_n') \psi_{n'}(x) \,.$$
+The S$_\mathrm{N}$ equations are, modifying Eq.~\eqref{eq:exact},
+\begin{equation}
+\mu_n \oder{\psi_n}{x}(x) + \Sigma_t(x) \psi_n(x) 
+= \sum_{l=0}^{L}  \frac{2l+1}{2} \Sigma_{sl}(x) P_{l}(\mu_n)
+  \sum_{n'=1}^{N} w_{n'} P_{l} (\mu_n') \psi_{n'}(x)
+  + Q_n(x)
+  \label{eq:sn}
+\end{equation}
+for $0 \le x \le X$ and $n=1,\ldots,N$.
+
+An isotropic source should be 
+\begin{equation}
+Q_n(x) = \frac{1}{2} Q(x) \,.
+  \label{eq:isotropicsource}
+\end{equation}
+
+\subsection{Infinite medium}
+The infinite-medium homogeneous \SN{} equations with an isotropic source are
+$$\Sigma_t \psi_n 
+= \sum_{l=0}^{L}  \frac{2l+1}{2} \Sigma_{sl} P_{l}(\mu_n)
+  \sum_{n'=1}^{N} w_{n'} P_{l} (\mu_n') \psi_{n'}
+  + \frac{1}{2} Q_0 \,.$$
+
+We multiply each equation by its corresponding weight, and add them all
+together:
+\begin{equation}
+\Sigma_t \sum_{n=1}^{N} w_{n} \psi_{n} 
+= \sum_{n=1}^{N} w_{n} \sum_{l=0}^{L}  \frac{2l+1}{2} \Sigma_{sl} P_{l}(\mu_n)
+  \sum_{n'=1}^{N} w_{n'} P_{l} (\mu_n') \psi_{n'}
+  + \sum_{n=1}^{N} w_{n} \frac{1}{2} Q_0
+  \label{eq:addedinf}
+\end{equation}
+The scalar flux is the zeroth Legendre moment of the equation ($P_l(\mu) = 1$),
+so
+$$ \phi(x) = \sum_{n=1}^{N} w_{n} \psi_{n}(x) \,.$$
+Then, Eq.~\eqref{eq:addedinf} is:
+$$ \Sigma_t [\phi] 
+= \sum_{l=0}^{L}  \frac{2l+1}{2} \Sigma_{sl} \left[ \sum_{n=1}^{N} w_{n}
+P_{l}(\mu_n) \right] \left[ \sum_{n'=1}^{N} w_{n'} P_{l} (\mu_n') \psi_{n'}
+\right] + \frac{1}{2} Q_0 [2] $$
+
+If the Gauss-Legendre quadrature set is used, then from
+\cite[p.121]{Lew1984}\footnote{I'm not entirely sure this is right: the
+normalization constant perhaps should be $(2)/(2l+1)$. In Lewis \& Miller,
+the Legendre moments are written with an extra $\frac{1}{2}$ factor on the
+summation or integral (and in compensation, the factor of 2 in the
+scattering term is left out).  That formulation does not agree with me: the
+scalar flux is an integral over all directions, not an average.}:
+$$ \sum_{n=1}^{N} w_{n} P_{l}(\mu_n) = 2 \delta_{l0} \,, l = 0,\ldots, N-1 \,.$$
+In this case, the scattering term collapses and the equation becomes
+\begin{align*}
+  \Sigma_t \phi 
+  &= \sum_{l=0}^{L}  \frac{2l+1}{2} \Sigma_{sl} \left[ 2 \delta_{l0} \right] \left[ \sum_{n'=1}^{N} w_{n'} P_{l} (\mu_n') \psi_{n'}
+\right] + Q_0
+\\
+  \Sigma_t \phi 
+  &=  \frac{1}{2} \Sigma_{s0} (2) \left[ \sum_{n'=1}^{N} w_{n'} P_{0} (\mu_n') \psi_{n'}
+\right] + Q_0
+\\
+\Sigma_t \phi 
+  &=  \Sigma_{s0} \phi + Q_0
+\\
+\phi 
+&=  \frac{Q_0}{\Sigma_t - \Sigma_{s0}} \,.
+\end{align*}
+This is the well-known infinite medium result.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Spatial discretizations: finite difference}
+We impose a spatial grid with $I+1$ points spanning $0 \le x \le X$. The
+space-dependent cross sections and source are assumed to be piecewise-constant
+inside the grid: for example, $\Sigma_t(x) = \Sigma_{t,i+1/2}$ for $x_{i} < x
+< x_{i+1}$.
+
+With finite difference equations, we integrate the \SN{} equations over each
+spatial interval, operating on Eq.~\eqref{eq:sn} by $\int_{x_{i}}^{x_{i+1}}
+(\cdot) \ud x$ for $i = 0,1,\ldots, I-1$.
+This results in $I$ equations for each of the $N$ directions (so $I \cdot N$
+total equations). Letting $\psi_{n,i} = \psi_n(x_i)$, we have
+\begin{multline}
+  \mu_n \left[ \psi_{n,i+1} - \psi_{n,i} \right] + \Sigma_{t,i+1/2}
+  \int_{x_{i}}^{x_{i+1}} \psi_n(x) \ud x
+\\
+= \sum_{l=0}^{L}  \frac{2l+1}{2} \Sigma_{sl,i+1/2} P_{l}(\mu_n)
+ \sum_{n'=1}^{N} w_{n'} P_{l} (\mu_n') \int_{x_{i}}^{x_{i+1}} \psi_{n'}(x) \ud x
+  + Q_{n,i+1/2}
+  \label{eq:finitediff}
+\end{multline}
+
+The \emph{diamond difference} discretization essentially assumes that the
+angular flux between two grid points is the average of those two, so the
+essential approximation is that
+\begin{equation}
+\int_{x_{i}}^{x_{i+1}} \psi_{n}(x) \ud x
+\approx \psi_{n,i+1/2} \int_{x_{i}}^{x_{i+1}}  \ud x 
+\approx  \left[ \frac{\psi_{n,i+1} + \psi_{n,i}}{2} \right] [x_{i+1} - x_{i}]
+\,.
+  \label{eq:diamondapprox}
+\end{equation}
+The width of each spatial cell is $x_{i+1} - x_{i} \equiv \Delta_i$. From this
+point, we make the substitution $X_{i+1/2} \to X_{i}$ for brevity, keeping in
+mind that the cross section or source for index $i$ refers to the cell between
+$x_i$ and $x_{i+1}$.
+
+We then have a total of $N\cdot(I+1)$ unknowns: the angular flux in every
+direction $N$ on every grid point. The missing equations are resolved by the
+boundary condition: on the left boundary ($i=0$) the angular flux $\phi_{n,0}$
+for incoming directions ($\mu_n > 0$) must be specified, and likewise on the
+right boundary ($i=I$) the angular flux $\phi_{n,I}$ must be specified
+for directions with $\mu_n < 0$.
+
+For isotropic scattering, Eq.~\eqref{eq:finitediff} has $L=0$, and simplifies to
+$$
+ \mu_n \left[ \psi_{n,i+1} - \psi_{n,i} \right] + \Sigma_{t,i}
+  \int_{x_{i}}^{x_{i+1}} \psi_n(x) \ud x
+= \frac{1}{2} \Sigma_{s0,i} 
+ \sum_{n'=1}^{N} w_{n'}  \int_{x_{i}}^{x_{i+1}} \psi_{n'}(x) \ud x
+  + Q_{n,i}
+$$
+Substituting Eq.~\eqref{eq:diamondapprox},
+$$ 
+\mu_n \left[ \psi_{n,i+1} - \psi_{n,i} \right]
++ \Sigma_{t,i} \Delta_i \left[ \frac{\psi_{n,i+1} + \psi_{n,i}}{2} \right]
+=
+\frac{1}{2} \Sigma_{s0,i} \Delta_i 
+\sum_{n'=1}^{N} w_{n'} \left[ \frac{\psi_{n',i+1} + \psi_{n',i}}{2} \right]
+  + Q_{n,i}
+$$
+
+Let $r = iN + n$, each equation for $r = 1, \ldots, IN$ is:
+$$
+\mu_n \left[ \psi_{n,i+1} - \psi_{n,i} \right]
++ \Sigma_{t,i} \Delta_i \left[ \frac{\psi_{n,i+1} + \psi_{n,i}}{2} \right]
+=
+\frac{1}{2} \Sigma_{s0,i} \Delta_i 
+\sum_{n'=1}^{N} w_{n'} \left[ \frac{\psi_{n',i+1} + \psi_{n',i}}{2} \right]
+  + Q_{n,i}
+$$
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\nocite{Lew1984,Lar2007}
+\bibliographystyle{siam}
+\bibliography{BibDesk_Library}
+\end{document}

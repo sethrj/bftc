@@ -3,20 +3,21 @@ function oneDTransport()
    % Author: Seth R. Johnson
    % Licensed under BSD
    
-   N = 4;
-   I = 8;
+   N = 8;
+   I = 64;
    
-   numEquations = I*N; %equations from the finite difference scheme
-   numUnknowns  = (I+1)*N; %unknown values of the flux
+   numUnknowns  = (I+1)*N;
 
    %%%%% generate problem data
    
    [mu w]   = createQuadrature(N);
-   delta_x  = createGrid(I, 1.0);
+   delta_x  = createGrid(I, 6.0);
    sigma_t  = createXsn(I, 1.0);
-   sigma_s0 = createXsn(I, 0.1);
-   q        = createSource(I, N, 1.0);
-   reflect  = 1;
+   sigma_s0 = createXsn(I, 0.8);
+   q        = createSource(N, delta_x, 2.0);
+   reflect  = [1 1];
+   
+   sigma_t(12:14) = 5.0;
    
    %%%%% create the transport matrices explicitly
    
@@ -52,14 +53,14 @@ function oneDTransport()
    
    boundariesMatrix = createBoundariesMatrix(I, N, reflect);
    
-   figure(1)
-   spy(transportMatrix)
-   
-   figure(2)
-   spy(scatterMatrix)
-   
-   figure(3)
-   spy(q)
+%    figure(1)
+%    spy(transportMatrix)
+%    
+%    figure(2)
+%    spy(scatterMatrix)
+%    
+%    figure(3)
+%    spy(q)
    
    transportMatrix = transportMatrix - scatterMatrix;
    
@@ -69,36 +70,51 @@ function oneDTransport()
    imagesc(transportMatrix)
    axis square
    
+   %%%%% annnnd.... OMG TRANSPORT:
    psi = transportMatrix \ q;
    
-%   disp(psi)
-   disp(fliplr((reshape(psi, N, I+1))'))
    
+   %%%%% display the results
+   disp((reshape(psi, N, I+1))')
+   
+   figure(5)
+   plot([0 cumsum(delta_x)], discreteToMoment(0,psi, mu, w, I)')
+   xlabel('x')
+   ylabel('\phi')
    %disp(mu)
    %disp(w)
 end
 
-function [phin] = discreteToMoment(n, psi, mu, w, I)
+function [phil] = discreteToMoment(l, psi, mu, w, I)
+   N = length(mu);
    
+   phil = zeros(I + 1, 1);
+   assert(length(psi) == (I+1)*N);
+   
+   if (l == 0)
+      r = 1;
+      for i = 1:I+1
+         for n = 1:N
+            phil(i) = phil(i) + w(n) * psi(r);
+            r = r + 1;
+         end
+      end
+   else
+      error('Higher moments not yet supported.')
+   end
 end
 
 function [bm]   = createBoundariesMatrix(I, N, reflecting)
    numUnknowns = (I+1)*N;
    bm = sparse(numUnknowns, numUnknowns);
+   assert(length(reflecting) == 2, 'reflecting should have left, right')
    
-   if reflecting == 1
+   if reflecting(1) == 1
       % set reflecting on left side (i = 0) for incidident directions (n > N/2)
       r = I*N + 1;
       for n = (N/2 + 1):N
          bm(r, n)       = 1;
-         bm(r, n - N/2) = -1;
-         r = r + 1;
-      end
-      
-      % set reflecting on left side (i = 0) for incidident directions (n < N/2)
-      for n = 1:N/2
-         bm(r, I*N + n)       = 1;
-         bm(r, I*N + n + N/2) = -1;
+         bm(r, N + 1 - n) = -1;
          r = r + 1;
       end
    else
@@ -108,6 +124,17 @@ function [bm]   = createBoundariesMatrix(I, N, reflecting)
          bm(r, n)       = 1;
          r = r + 1;
       end
+   end
+   
+   if reflecting(2) == 1
+      % set reflecting on left side (i = 0) for incidident directions (n < N/2)
+      for n = 1:N/2
+         bm(r, I*N + n)       = 1;
+         bm(r, I*N + N + 1 - n) = -1;
+         r = r + 1;
+      end
+   else
+      % set incoming flux at the boundaries to zero
       for n = 1:N/2
          bm(r, I*N + n)       = 1;
          r = r + 1;
@@ -115,9 +142,12 @@ function [bm]   = createBoundariesMatrix(I, N, reflecting)
    end
 end
 
-function [q] = createSource(I, N, q0)
-   %source in the finite difference equations
-   q = ones(I*N, 1) * q0;
+function [q] = createSource(N, delta_x, q0)
+   %uniform, isotropic source in the finite difference equations
+   I = length(delta_x);
+   q = q0 ./ 2 .* delta_x;
+   q = repmat(q, N, 1);
+   q = reshape(q, I * N, 1);
    
    %zeros that go along with the boundary condition equations
    q = [q; zeros(N, 1)];
@@ -128,7 +158,7 @@ function [sigma_x] = createXsn(I, xsn)
 end
 
 function [deltas] = createGrid(I, width)
-   deltas = ones(I) .* width ./ I;
+   deltas = ones(1, I) .* width ./ I;
    % deltas = diff(gridPoints)
 end
 
@@ -149,5 +179,5 @@ function [mu w] = createQuadrature(N)
    end
    
    mu = [-fliplr(mu) mu];
-   w  = [-fliplr(w) w];
+   w  = [fliplr(w) w];
 end

@@ -21,7 +21,7 @@ $$
 or, writing the scattering in terms of Legendre polynomials, truncating to the
 $L$th polynomial,
 \begin{subequations}
-  \label{eq:exactwithbc}
+  \label{eqs:exactwithbc}
 \begin{equation}
 \mu \pder{\psi}{x}( x, \mu) + \Sigma_t(x) \psi(x,\mu) 
 = \sum_{l=0}^{L}  \frac{2l+1}{2} \Sigma_{sl}(x) P_{l}(\mu)
@@ -37,14 +37,17 @@ conditions
   \psi(X, \mu) &= \psi^R(\mu) \,, \quad -1 < \mu \le 0 \,.
 \end{align}
 \end{subequations}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Discrete ordinates}
 To formulate the discrete ordinates approximation, we let $\psi(\mu)$ only hold
 on $N$ specific ordinate directions, each one with angle $\mu_n$ and weight
-$w_n$. (The weights satisfy $\sum_{n=1}^{N} w_n = 2$, analogous to how
-$\int_{-1}^{1} \ud \mu = 1$.)
+$w_n$. We always require $N$ to be an even number, and that $\mu_n$ increase
+with increasing $n$. The weights satisfy
+$\sum_{n=1}^{N} w_n = 2$, analogous to how $\int_{-1}^{1} \ud \mu = 1$. 
 The angular flux along each direction is $\psi(\mu_n) = \psi_n$.
-Also, any integration over angle becomes a quadrature sum, so that
+
+Any integration over angle becomes a quadrature sum, so that
 $$ \int_{-1}^{1} P_{l} (\mu') \psi(x,\mu')  \ud\mu'
 \lra
 \sum_{n'=1}^{N} w_{n'} P_{l} (\mu_n') \psi_{n'}(x) \,.$$
@@ -63,7 +66,16 @@ An isotropic source should be
 Q_n(x) = \frac{1}{2} Q(x) \,.
   \label{eq:isotropicsource}
 \end{equation}
+Additionally, boundary conditions such as those in
+Eqs.~\eqref{eqs:exactwithbc} are required. I have not yet looked into the
+evaluation of discrete boundary conditions for an arbitrary incident flux, but
+the reflecting boundary conditions $\psi(0, \mu) = \psi(0, -\mu)$ for $0 < \mu
+< 1$ have their obvious counterpart in the \SN{} equations, for example:
+$$ \psi_{n}(0) = \psi_{N + 1 - n}(0) \,, \quad N/2 + 1 < n < N  \,.$$
 
+For vacuum boundaries, of course, $\psi_{n}(0) = 0$ for the incoming directions.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Infinite medium}
 The infinite-medium homogeneous \SN{} equations with an isotropic source are
 $$\Sigma_t \psi_n 
@@ -132,7 +144,7 @@ total equations). Letting $\psi_{n,i} = \psi_n(x_i)$, we have
 \\
 = \sum_{l=0}^{L}  \frac{2l+1}{2} \Sigma_{sl,i+1/2} P_{l}(\mu_n)
  \sum_{n'=1}^{N} w_{n'} P_{l} (\mu_n') \int_{x_{i}}^{x_{i+1}} \psi_{n'}(x) \ud x
-  + Q_{n,i+1/2}
+  + Q_{n,i+1/2} \int_{x_{i}}^{x_{i+1}} \ud x
   \label{eq:finitediff}
 \end{multline}
 
@@ -151,7 +163,7 @@ point, we make the substitution $X_{i+1/2} \to X_{i}$ for brevity, keeping in
 mind that the cross section or source for index $i$ refers to the cell between
 $x_i$ and $x_{i+1}$.
 
-We then have a total of $N\cdot(I+1)$ unknowns: the angular flux in every
+We have a total of $N\cdot(I+1)$ unknowns: the angular flux in every
 direction $N$ on every grid point. The missing equations are resolved by the
 boundary condition: on the left boundary ($i=0$) the angular flux $\phi_{n,0}$
 for incoming directions ($\mu_n > 0$) must be specified, and likewise on the
@@ -164,7 +176,7 @@ $$
   \int_{x_{i}}^{x_{i+1}} \psi_n(x) \ud x
 = \frac{1}{2} \Sigma_{s0,i} 
  \sum_{n'=1}^{N} w_{n'}  \int_{x_{i}}^{x_{i+1}} \psi_{n'}(x) \ud x
-  + Q_{n,i}
+  + Q_{n,i}  \Delta_i
 $$
 Substituting Eq.~\eqref{eq:diamondapprox},
 $$ 
@@ -173,21 +185,21 @@ $$
 =
 \frac{1}{2} \Sigma_{s0,i} \Delta_i 
 \sum_{n'=1}^{N} w_{n'} \left[ \frac{\psi_{n',i+1} + \psi_{n',i}}{2} \right]
-  + Q_{n,i}
+  + Q_{n,i} \Delta_i
 $$
 
 Let $r = iN + n$, each equation for $r = 1, \ldots, IN$ is:
 $$
-\mu_n \left[ \psi_{n,i+1} - \psi_{n,i} \right]
-+ \Sigma_{t,i} \Delta_i \left[ \frac{\psi_{n,i+1} + \psi_{n,i}}{2} \right]
+\mu_n \left[ \psi_{r + N} - \psi_{r} \right]
++ \Sigma_{t,i} \Delta_i \left[ \frac{\psi_{r + N} + \psi_{r}}{2} \right]
 =
 \frac{1}{2} \Sigma_{s0,i} \Delta_i 
 \sum_{n'=1}^{N} w_{n'} \left[ \frac{\psi_{n',i+1} + \psi_{n',i}}{2} \right]
-  + Q_{n,i}
+  + Q_{r} \Delta_i
 $$
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \nocite{Lew1984,Lar2007}
 \bibliographystyle{siam}
-\bibliography{BibDesk_Library}
+\bibliography{references}
 \end{document}

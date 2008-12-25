@@ -3,16 +3,16 @@ function oneDTransport()
    % Author: Seth R. Johnson
    % Licensed under BSD
    
-   I = 128; % number of spatial cells
+   I = 20; % number of spatial cells
    N = 8;  % number of discrete ordinates
    
-%   runSourceDriven(I, N);
-   runEigenvalue(I, N);
+   runSourceDriven(I, N);
+%   runEigenvalue(I, N);
 end   
 
 function runEigenvalue(I, N)
    
-   numEigenvals = 5;
+   numEigenvals = 6;
    
    %%%%% generate problem data
    [mu w]   = createQuadrature(N);
@@ -24,7 +24,7 @@ function runEigenvalue(I, N)
    
 %   sigma_t(240:250) = 10.0;
    nusigma_f(I/2 + (1:I/32)) = 0.0;
-   sigma_t(I/2 + (1:I/16))   = 10.0;
+   sigma_t(I/2 + (1:I/32))   = 10.0;
    
    %%%%% create the transport matrices explicitly
     transportMatrix = createTransportMatrix(delta_x, sigma_t,sigma_s0, mu, w);
@@ -74,11 +74,11 @@ function runEigenvalue(I, N)
    figure(2)
    clf
    grid = [0 cumsum(delta_x)];
-   legendText = {};
-   for i = 1:numEigenvals
-      plot(grid, phi(:,i)')
+   legendText = cell(1, numEigenvals);
+   for e = 1:numEigenvals
+      plot(grid, phi(:,e)')
       hold all
-      legendText{end+1} = sprintf('%d', i); %#ok<AGROW>
+      legendText{e} = sprintf('%d', e);
    end
    xlabel('x')
    ylabel('\phi')
@@ -86,36 +86,85 @@ function runEigenvalue(I, N)
 end
 
 function runSourceDriven(I, N)
+   global transportMatrix;
+   
    %%%%% generate problem data
    [mu w]   = createQuadrature(N);
-   delta_x  = createGrid(I, 6.0);
+   delta_x  = createGrid(I, 100.0);
    
    sigma_t  = createXsn(I, 1.0);
-   sigma_s0 = createXsn(I, 0.5);   
-   q        = createSource(N, delta_x, 1.0);
+   sigma_s0 = createXsn(I, 0.0);   
+   q        = createSource(I, 1.0);
    reflect  = [1 1];
    
-   sigma_t(12:14) = 5.0;
+   sigma_t(I/2 - I/32 + (1:I/16))   = 15.0;
+   q(I/2 - I/32 + (1:I/16))         = 0.0;
    
    %%%%% create the transport matrices explicitly
    
    transportMatrix = createTransportMatrix(delta_x, sigma_t,sigma_s0, mu, w)...
                      + createBoundariesMatrix(I, N, reflect);
    
-   figure(4)
-   imagesc(log10(abs(transportMatrix)))
-   axis square
+   q = isotropicSourceVector(N, q);
+   
+   figure(3)
+   if (I*N < 150)
+%   imagesc(log10(abs(transportMatrix)))
+      imagesc(transportMatrix)
+      axis square
+%      advanceSpy([transportMatrix q], 7, 0);
+%      line([1 1].*(I+1)*N + 0.5, [0 1]*(I+1)*N + 0.5,'Color','k')
+   end
    
    %%%%% annnnd.... OMG TRANSPORT:
    psi = transportMatrix \ q;
    
    %%%%% display the results
-%   disp((reshape(psi, N, I+1))')
-   
-   figure(5)
-   plot([0 cumsum(delta_x)], discreteToMoment(0,psi, mu, w)')
+   grid = [0 cumsum(delta_x)];
+   figure(1)
+   plot(grid, discreteToMoment(0,psi, mu, w)')   
    xlabel('x')
    ylabel('\phi')
+   
+   figure(2)
+   plotAngularFlux(grid, psi, mu)
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function plotAngularFlux(x, psi, mu)
+   N = length(mu);
+   I = length(psi)/N;
+   psi2 = reshape(psi, N, I)';
+   clf
+   
+%    [X Y] = meshgrid(x, mu);
+%    surf(X, Y, psi2');
+%    xlabel('x')
+%    ylabel('\mu')
+%    zlabel('\psi_n')
+%    return
+   
+   if (N < 10)
+      legendText = cell(1, N);
+      %2-D plot with different colors
+      for n = 1:N
+         plot(x, psi2(:,n))
+         hold all
+         legendText{n} = sprintf('\\mu=%.4f', mu(n));
+      end
+      xlabel('x')
+      ylabel('\psi_n')
+      legend(legendText)
+   else
+      %3-D plot
+      for n = 1:N
+         plot3(x, mu(n) * ones(1, I), psi2(:,n))
+         hold on
+      end
+      xlabel('x')
+      ylabel('\mu')
+      zlabel('\psi_n')
+      grid on
+   end
 end
 
 function [phil] = discreteToMoment(l, psi, mu, w)
@@ -190,18 +239,18 @@ function [transportMatrix] = createTransportMatrix(delta_x, sigma_t, ...
          
          %streaming term
          transportMatrix(r,r + N) = transportMatrix(r,r + N) ...
-            + mu(n);
+            + mu(n) / delta_x(i);
          transportMatrix(r,r) = transportMatrix(r,r) ...
-            - mu(n);
+            - mu(n) / delta_x(i);
          
          %absorption term
          transportMatrix(r,r + N) = transportMatrix(r,r + N) ...
-               + sigma_t(i) * delta_x(i) /2;
+               + sigma_t(i)  /2;
          transportMatrix(r,r) = transportMatrix(r,r) ...
-               + sigma_t(i) * delta_x(i) /2;
+               + sigma_t(i)  /2;
          
          %scattering term         
-         scatterTerm = sigma_s0(i) * delta_x(i) / 2;
+         scatterTerm = sigma_s0(i) / 2;
          for m = 1:N
             s = (i-1)*N + m;
             
@@ -242,15 +291,19 @@ function [fissionMatrix] = createFissionMatrix(delta_x, nusigma_f, mu, w)
    end
 end
 
-function [q] = createSource(N, delta_x, q0)
+function [q] = createSource(I, q0)
+   q = ones(1, I) .* q0;
+end
+
+function [newq] = isotropicSourceVector(N, q)
    %uniform, isotropic source in the finite difference equations
-   I = length(delta_x);
-   q = q0 ./ 2 .* delta_x;
-   q = repmat(q, N, 1);
-   q = reshape(q, I * N, 1);
+   I = length(q);
+   q = q ./ 2 ;
+   newq = repmat(q, N, 1);
+   newq = reshape(newq, I * N, 1);
    
    %zeros that go along with the boundary condition equations
-   q = [q; zeros(N, 1)];
+   newq = [newq; zeros(N, 1)];
 end
 
 function [sigma_x] = createXsn(I, xsn)

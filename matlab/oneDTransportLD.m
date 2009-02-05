@@ -3,30 +3,43 @@ function oneDTransportLD()
    % Author: Seth R. Johnson
    % Licensed under BSD
    
-   global I N sigma_t  sigma_s0  q reflect  width;
+   % problem data---stuff that is only created once---is global
+   global I N mu w delta_x reflect sigma_t sigma_s0 nusigma_f q ;
    
-   I = 6;  % number of spatial cells
+   I = 10;  % number of spatial cells
    N = 4;  % number of discrete ordinates
    
-   sigma_t  = createXsn(I, 2.0);
-   sigma_s0 = createXsn(I, 1.0);
-   reflect  = [0 0]; %reflecting bounds on left and right
-   width    = 3.0;
+   sigma_t  = createXsn(I, 1.0);
+   sigma_s0 = createXsn(I, 0.0);
+   reflect  = [0 1]; %reflecting bounds on left and right
+   width    = 1.0;
    
    q        = createSource(I, 1.0);
+   
+   nusigma_f= createXsn(I, 1.5);
    
    % change a piece of the cross sections
    %sigma_t(3) = 10;
    %q(3) = 0;
    %   sigma_t(I/2 - I/32 + (1:I/16))   = 15.0;
    %   q(I/2 - I/32 + (1:I/16))         = 0.0;
+   %   sigma_t(240:250) = 10.0;
+   %nusigma_f(I/2 + (1:I/32)) = 0.0;
+   %sigma_t(I/2 + (1:I/32))   = 10.0;
    
+   [mu w]   = createQuadrature(N);
+   delta_x  = createGrid(I, width);
+   
+   %%% mass matrix
+   global massmatrix
+   %massmatrix = [1/3 1/6; 1/6 1/3]; %regular 
+   massmatrix = [1/2 0; 0 1/2]; %lumped
    
    %%% uncomment any of these three lines to run different codes
    
    %  runTransportMatrixTest()
    %  runIterateMfpEigenvalues()
-     runSourceDriven();
+      runSourceDriven();
    %  runEigenvalue();
 end
 
@@ -34,11 +47,10 @@ function runIterateMfpEigenvalues()
    % look at how changing the width of a problem with two reflecting
    % boundaries changes the eigenvalue clustering
    
-   global transportMatrix;
-   global reflect  width;
+   global reflect delta_x I;
    
    %change problem parameters
-   reflect  = [1 1];
+   reflect  = [0 0];
    
    
    iterate = [1 2 5 10 20]; %width of the problem
@@ -49,10 +61,10 @@ function runIterateMfpEigenvalues()
    figure(4)
    clf
    for i = 1:length(iterate)
-      width = iterate(i);
-      legtext{i} = sprintf('%.2g', width);
+      delta_x  = createGrid(I, iterate(i)); %recreate the grid
+      legtext{i} = sprintf('%.2g', iterate(i));
       
-      runSourceDriven();
+      transportMatrix = createTransportMatrix() + createBoundariesMatrix();
       
       [lambda] = eig(full(transportMatrix));
       figure(4)
@@ -64,42 +76,25 @@ function runIterateMfpEigenvalues()
 end
 
 function runTransportMatrixTest()
-   global transportMatrix;
-   global I N reflect sigma_t  sigma_s0 width;
-      
-   %%%%% generate problem data
-   [mu w]   = createQuadrature(N);
-   delta_x  = createGrid(I, width);
    
-   %%%%% create the transport matrices explicitly
+   %make transportmatrix global so we can look at it outside of this program
+   global transportMatrix
    
-   transportMatrix = createTransportMatrix(delta_x, sigma_t,sigma_s0, mu, w)...
-   + createBoundariesMatrix(I, N, reflect);
+   %%%%% create the transport matrices explicitly   
+   transportMatrix = createTransportMatrix() + createBoundariesMatrix();
    figure(1)
-   advanceSpy(transportMatrix, 4, 0);
+   advanceSpy(transportMatrix, 6, 0);
    drawmatlabels();
 end
 
 function runEigenvalue()
-   global I N nusigma_f sigma_t  sigma_s0  reflect width;
+   global I N mu w delta_x;
    
    numEigenvals = 6;
-   
-   %%%%% generate problem data
-   [mu w]   = createQuadrature(N);
-   delta_x  = createGrid(I, width);
-   nusigma_f= createXsn(I, 1.5);
-   
-   %   sigma_t(240:250) = 10.0;
-   nusigma_f(I/2 + (1:I/32)) = 0.0;
-   sigma_t(I/2 + (1:I/32))   = 10.0;
-   
+      
    %%%%% create the transport matrices explicitly
-   transportMatrix = createTransportMatrix(delta_x, sigma_t,sigma_s0, mu, w);
-   bm              = createBoundariesMatrix(I, N, reflect);
-   transportMatrix = transportMatrix + bm;
-   
-   fissionMatrix   = createFissionMatrix(delta_x, nusigma_f, mu, w);
+   transportMatrix = createTransportMatrix() + createBoundariesMatrix();
+   fissionMatrix   = createFissionMatrix();
    
    if (I*N < 150)
       figure(3)
@@ -107,11 +102,11 @@ function runEigenvalue()
       axis square
    end
    
-   
    %%%%% annnnd.... OMG TRANSPORT:
    operator = @(x) transportMatrix\(fissionMatrix * x);
    options.disp = 0;
-   [psi, lambda] = eigs(operator, (I+1)*N, numEigenvals, 'lm', options);
+   [psi, lambda] = eigs(operator, getNumberOfUnknowns(),...
+                        numEigenvals, 'lm', options);
    
    %%%%% fix up the eigenvectors
    lambda = diag(lambda);
@@ -152,30 +147,27 @@ function runEigenvalue()
 end
 
 function runSourceDriven()
-   global transportMatrix;
-   
-   global I N q sigma_t  sigma_s0  reflect width;
-   
-   
-   %%%%% generate problem data
-   [mu w]   = createQuadrature(N);
-   delta_x  = createGrid(I, width);
+   global q delta_x;
    
    %%%%% create the transport matrices explicitly
    
-   transportMatrix = createTransportMatrix(delta_x, sigma_t,sigma_s0, mu, w)...
-      + createBoundariesMatrix(I, N, reflect);
+   transportMatrix = createTransportMatrix() + createBoundariesMatrix();
    
-   q = isotropicSourceVector(N, q);
+   q = isotropicSourceVector(q);
    
    figure(3)
-   if (I*N < 150)
+   if (getNumberOfUnknowns() < 150)
       %   imagesc(log10(abs(transportMatrix)))
       %      imagesc(transportMatrix)
       %      axis square
-      advanceSpy([transportMatrix q], 3, 0);
-      numUnknowns = I*N*2 + N;
-      line([1 1]*numUnknowns + 0.5, [0 1]*numUnknowns + 0.5,'Color','k')
+      advanceSpy([transportMatrix q], 10, 0);
+      if (getNumberOfUnknowns() < 60)
+         drawmatlabels();
+      end
+      
+      numUnknowns = getNumberOfUnknowns();
+      line([1 1]*getNumberOfUnknowns() + 0.5,...
+           [0 1]*numUnknowns + getNumberOfUnknowns(),'Color','k')
    end
    
    %%%%% annnnd.... OMG TRANSPORT:
@@ -190,24 +182,38 @@ function runSourceDriven()
 %    xlabel('x')
 %    ylabel('\phi')
    
+   [x psimatrix] = convertAngularFlux(grid, psi);
+   
+   figure(1)
+   clf
+   %2-D plot with different colors
+   plot(x, discreteToMoment(0,psimatrix))
+   
+   xlabel('x')
+   ylabel('\phi')
+   
    figure(2)
-   plotAngularFlux(grid, psi, mu)
+   plotAngularFlux(x, psimatrix);
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function plotAngularFlux(x, psi, mu)
-   global I N thelabels
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% SUPPORT FUNCTIONS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+function [x2 psi2] = convertAngularFlux(x, psi)
+   %de-linearize the solution vector
+   global I N 
+%   global thelabels
+   
    % two x's for psi on the left and right
-   x2 = reshape(repmat(x, 2, 1), 1, (I+1)*2);
-   x2 = x2(1:end);
+   x2 = reshape(repmat(x, 2, 1), 1, (I+1)*2)';
    
    psi2 = nan*ones((I+1)*2, N);
-   psil = cell((I+1)*2, N);
+%   psil = cell((I+1)*2, N);
    a = 1;
    for n = N/2+1:N
       psi2(1,n) = psi(a);
-      psil(1,n) = thelabels(a);
+%      psil(1,n) = thelabels(a);
       a = a+1;
    end
    
@@ -215,7 +221,7 @@ function plotAngularFlux(x, psi, mu)
       for n = 1:N %ordinate         
          for g = 1:2 %basis function, 1 = left, 2 = right
             psi2(2*i - 1 + g,n) = psi(a);
-            psil(2*i - 1 + g,n) = thelabels(a);
+%            psil(2*i - 1 + g,n) = thelabels(a);
             a = a+1;
          end
       end
@@ -223,63 +229,44 @@ function plotAngularFlux(x, psi, mu)
    
    for n = 1:N/2
       psi2(end,n) = psi(a);
-      psil(end,n) = thelabels(a);
+%      psil(end,n) = thelabels(a);
       a = a+1;
    end
    
+%   disp([num2cell(x2) psil])
+%   disp([x2 psi2])
+end
+
+function plotAngularFlux(x, psi)
+   %psi is a de-linearized I x N matrix
+   global N mu
    clf   
-   %    [X Y] = meshgrid(x, mu);
-   %    surf(X, Y, psi2');
-   %    xlabel('x')
-   %    ylabel('\mu')
-   %    zlabel('\psi_n')
-   %    return
    
-   disp([num2cell(x2') psil])
-   disp([x2' psi2])
-   %if (N < 10)
-      legendText = cell(1, N);
-      %2-D plot with different colors
-      for n = 1:N
-         plot(x2, psi2(:,n))
-         hold all
-         legendText{n} = sprintf('\\mu=%.4f', mu(n));
-      end
-      xlabel('x')
-      ylabel('\psi_n')
-      legend(legendText)
-%    else
-%       %3-D plot
-%       for n = 1:N
-%          plot3(x, mu(n) * ones(1, I), psi2(:,n))
-%          hold on
-%       end
-%       xlabel('x')
-%       ylabel('\mu')
-%       zlabel('\psi_n')
-%       grid on
-%    end
-end
-
-function [phil] = discreteToMoment(l, psi, mu, w)
-   N  = length(mu);
-   Ip = length(psi) / N; % Ip = I + 1
-   
-   phil = zeros(Ip, 1);
-   
-   if (l == 0)
-      r = 1;
-      for i = 1:Ip
-         for n = 1:N
-            phil(i) = phil(i) + w(n) * psi(r);
-            r = r + 1;
-         end
-      end
-   else
-      error('Higher moments not yet supported.')
+   legendText = cell(1, N);
+   %2-D plot with different colors
+   for n = 1:N
+      plot(x, psi(:,n))
+      hold all
+      legendText{n} = sprintf('\\mu=%.4f', mu(n));
    end
+   xlabel('x')
+   ylabel('\psi_n')
+   legend(legendText)
 end
 
+function [phi] = discreteToMoment(l, psi)
+   %calculate l'th moment of angular flux psi
+   % psi is an (num points along x) x N array
+
+   global mu w
+   
+   [X,NN] = size(psi);
+   assert(all(size(mu)==[1 NN]),'bad dimensions on mu');
+   assert(all(size(w)==[1 NN]),'bad dimensions on w');
+   
+%   assert((l+1) <= N,'You''re trying to calculate too high an angular moment');
+   phi = sum(psi .* repmat(w .* mu.^(l),X,1),2);  %sum along rows
+end
 
 function drawmatlabels()
    global thelabels;
@@ -298,18 +285,37 @@ function drawmatlabels()
    set(gca,'GridLineStyle',':')
 end
 
+function u = getNumberOfUnknowns()
+   global I N
+   
+   u = I*N*2 + N; %I cells, N directions, 2 basis funcs
+end
 
-function [bm]   = createBoundariesMatrix(I, N, reflecting)
-   numUnknowns  = I*N*2 + N; %I cells, N directions, 2 basis funcs
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CREATION FUNCTIONS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+function [bm]   = createBoundariesMatrix()
+   global I N reflect
+   
+   numUnknowns  = getNumberOfUnknowns();
    bm = sparse(numUnknowns, numUnknowns);
-   assert(length(reflecting) == 2, 'reflecting should have left, right')
+   assert(length(reflect) == 2, 'reflecting should have left, right')
    
    global thelabels
    
-   if reflecting(1) == 1
+   if reflect(1) == 1
       % set reflecting on left side (i = 1) for incidident directions (n > N/2)
       % sets \Psi_{n,R,0} to \Psi_{n',L,1}
-      assert(false)
+      for n = (N/2 + 1):N
+         nprime = N + 1 - n;
+         
+         r = n - N/2;
+         s = ((1-1)*N + (nprime-1))*2 + N/2 + 1;
+         bm(r, r) = 1;
+         bm(r, s) = -1;
+         thelabels{r} = sprintf('%d,%s,%d',n,'R',0);
+      end
    else
       % set \Psi_{n,R,0} for \mu_n > 0
       for n = N/2+1:N
@@ -319,10 +325,18 @@ function [bm]   = createBoundariesMatrix(I, N, reflecting)
       end
    end
    
-   if reflecting(2) == 1
+   if reflect(2) == 1
       % set reflecting on right side (i = I) for incidident directions (n < N/2)
       % sets \Psi_{n,L,I+1} to \Psi_{n',R,1}
-      assert(false)
+      for n = 1:N/2
+         nprime = N + 1 - n;
+         
+         r = I*N*2 + n + N/2;
+         s = ((I-1)*N + (nprime-1))*2 + N/2 + 2;
+         bm(r, r) = 1;
+         bm(r, s) = -1;
+         thelabels{r} = sprintf('%d,%s,%d',n,'L',I+1);
+      end   
    else
       % sets \Psi_{n,L,I+1} for \mu_n > 0
       for n = 1:N/2
@@ -333,21 +347,18 @@ function [bm]   = createBoundariesMatrix(I, N, reflecting)
    end
 end
 
-function [transportMatrix] = createTransportMatrix(delta_x, sigma_t, ...
-      sigma_s0, mu, w)
+function [transportMatrix] = createTransportMatrix()
    % generate the SN linear discontinous equations
-   N = length(mu);
-   I = length(sigma_t);
-   numUnknowns  = I*N*2 + N; %I cells, N directions, 2 basis funcs
+   global delta_x sigma_t sigma_s0 mu w N I massmatrix
    
-   massmatrix = [1/3 1/6; 1/6 1/3]; %regular 
-   %massmatrix = [1/2 0; 0 1/2]; %lumped
+   numUnknowns  = getNumberOfUnknowns();
    
    transportMatrix = sparse(numUnknowns, numUnknowns);
    
+   %make global labels for our arrays, if need be
    global thelabels;
    
-   thelabels = cell(1, numUnknowns);
+   thelabels = cell(numUnknowns,1);
    
    lr = 'LR';
    
@@ -366,7 +377,7 @@ function [transportMatrix] = createTransportMatrix(delta_x, sigma_t, ...
             end
          else
             if (i == I)
-               right = numUnknowns; %boundary on the right
+               right = I*N*2 +N/2 + n; %boundary on the right
             else
                right = r + N*2 + 1; %(i+1)'s left, same angle
             end
@@ -375,14 +386,14 @@ function [transportMatrix] = createTransportMatrix(delta_x, sigma_t, ...
 
          
          if (left < 1)
-            disp(sprintf('Left is less than 1: i=%d,n=%d, left=%d',...
-               i,n,left));
+            fprintf(1,'Left is less than 1: i=%d,n=%d, left=%d',...
+               i,n,left);
             left = 1;
          end
          
          if (right > numUnknowns)
-            disp(sprintf('Right is greater than %d: i=%d,n=%d, left=%d',...
-               numUnknowns,i,n,right));
+            fprintf(1,'Right is greater than %d: i=%d,n=%d, left=%d',...
+               numUnknowns,i,n,right);
             left = 1;
          end
          
@@ -413,9 +424,9 @@ function [transportMatrix] = createTransportMatrix(delta_x, sigma_t, ...
 
             %absorption term
             transportMatrix(r+g,r+1) = transportMatrix(r+g,r+1) ...
-              + 1;% + massmatrix(g,1)*sigma_t(i);
+               + massmatrix(g,1)*sigma_t(i);
             transportMatrix(r+g,r+2) = transportMatrix(r+g,r+2) ...
-              + 1;% + massmatrix(g,2)*sigma_t(i);
+               + massmatrix(g,2)*sigma_t(i);
 
             %scattering term
             scatterTerm = sigma_s0(i) / 2;
@@ -423,22 +434,21 @@ function [transportMatrix] = createTransportMatrix(delta_x, sigma_t, ...
                s = ((i-1)*N + (m-1))*2 + N/2;
                % \Phi_{L,i}
                transportMatrix(r+g,s+1)     = transportMatrix(r+g,s+1) ...
-                  - scatterTerm * w(m);
+                  - scatterTerm * massmatrix(g,1) * w(m);
                
                % \Phi_{R,i}
                transportMatrix(r+g,s+2)     = transportMatrix(r+g,s+2) ...
-                  - scatterTerm * w(m);
+                  - scatterTerm * massmatrix(g,2) *w(m);
             end
          end
       end
    end
 end
 
-function [fissionMatrix] = createFissionMatrix(delta_x, nusigma_f, mu, w)
-   % generate the SN finite difference equations
-   N = length(mu);
-   I = length(nusigma_f);
-   numUnknowns  = (I+1)*N;
+function [fissionMatrix] = createFissionMatrix()
+   global delta_x nusigma_f w N I
+   
+   numUnknowns  = getNumberOfUnknowns();
    
    fissionMatrix = sparse(numUnknowns, numUnknowns);
    
@@ -465,9 +475,10 @@ function [q] = createSource(I, q0)
    q = ones(1, I) .* q0;
 end
 
-function [newq] = isotropicSourceVector(N, q)
+function [newq] = isotropicSourceVector(q)
+   global I N
    %uniform, isotropic source
-   I = length(q);
+   assert(I==length(q),'input q should be length I');
    q = q ./ 4 ; % 2 for isotropic, 2 for splitting it up into sum of left and right
    newq = repmat(q, N*2, 1);
    newq = reshape(newq, I * N * 2, 1);

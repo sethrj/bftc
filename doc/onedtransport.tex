@@ -183,38 +183,35 @@ In this case, the scattering term collapses and the equation becomes
 This is the well-known infinite medium result.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Spatial discretizations: finite difference}
-We impose a spatial grid with $I+1$ points spanning $0 \le x \le X$. The
+We impose a spatial grid with $I$ cells spanning $0 \le x \le X$. The
 space-dependent cross sections and source are assumed to be piecewise-constant
-inside the grid: for example, $\Sigma_t(x) = \Sigma_{t,i+1/2}$ for $x_{i} < x
-< x_{i+1}$. The width of each spatial cell is $x_{i+1} - x_{i} \equiv
-\Delta_i$. 
+inside the grid: for example, $\Sigma_t(x) = \Sigma_{t,i}$ for $x_{i-1/2} < x
+< x_{i+1}$. The width of each spatial cell is $x_{i+1/2} - x_{i-1/2} \equiv
+\Delta_i$. Also, from our spatial grid definition, $x(0) = x_{1/2}$ and $x(X) =
+x_{I+1/2}$
 
 With finite difference equations, we integrate the \SN{} equations over each
-spatial interval, operating on Eq.~\eqref{eq:sn} by $\int_{x_{i}}^{x_{i+1}}
-(\cdot) \ud x$ for $i = 0,1,\ldots, I-1$.
+spatial interval, operating on Eq.~\eqref{eq:sn} by
+$\int_{x_{i-1/2}}^{x_{i+1/2}} (\cdot) \ud x$ for $i = 1,2,\ldots, I$.
 This results in $I$ equations for each of the $N$ directions (so $I \cdot N$
-total equations). Letting $\psi_{n,i} = \psi_n(x_i)$, we have
+total equations). Letting $\psi_{n,i+1/2} = \psi_n(x_{i+1/2})$, we have
 \begin{multline}
-  \mu_n \left[ \psi_{n,i+1} - \psi_{n,i} \right] + \Sigma_{t,i+1/2}
-  \int_{x_{i}}^{x_{i+1}} \psi_n(x) \ud x
+  \mu_n \left[ \psi_{n,i+1/2} - \psi_{n,i-1/2} \right] + \Sigma_{t,i}
+  \int_{x_{i-1/2}}^{x_{i+1/2}} \psi_n(x) \ud x
 \\
-= \sum_{l=0}^{L}  \frac{2l+1}{2} \Sigma_{sl,i+1/2} P_{l}(\mu_n)
- \sum_{n'=1}^{N} w_{n'} P_{l} (\mu_{n'}) \int_{x_{i}}^{x_{i+1}} \psi_{n'}(x) \ud x
-  + Q_{n,i+1/2} \int_{x_{i}}^{x_{i+1}} \ud x
+= \sum_{l=0}^{L}  \frac{2l+1}{2} \Sigma_{sl,i} P_{l}(\mu_n)
+ \sum_{n'=1}^{N} w_{n'} P_{l} (\mu_{n'}) \int_{x_{i-1/2}}^{x_{i+1/2}} \psi_{n'}(x) \ud x
+  + Q_{n,i} \int_{x_{i-1/2}}^{x_{i+1/2}} \ud x
   \label{eq:finitediff}
 \end{multline}
-From this
-point, we make the substitution $X_{i+1/2} \to X_{i}$ for brevity, keeping in
-mind that the cross section or source for index $i$ refers to the cell between
-$x_i$ and $x_{i+1}$.
 
 The \emph{diamond difference} discretization essentially assumes that the
 ``cell-averaged flux'' is the average of the two cell-edge fluxes, so the
 essential approximation is that
 \begin{equation}
-  \frac{1}{x_{i+1} - x_{i}} \int_{x_{i}}^{x_{i+1}} \psi_{n}(x) \ud x
- = \frac{1}{\Delta_i} \int_{x_{i}}^{x_{i+1}} \psi_{n}(x) \ud x
-\approx  \frac{1}{\Delta_i} \frac{\psi_{n,i+1} + \psi_{n,i}}{2} 
+  \frac{1}{x_{i+1/2} - x_{i-1/2}} \int_{x_{i-1/2}}^{x_{i+1/2}} \psi_{n}(x) \ud x
+ = \frac{1}{\Delta_i} \int_{x_{i-1/2}}^{x_{i+1/2}} \psi_{n}(x) \ud x
+\approx  \frac{1}{\Delta_i} \frac{\psi_{n,i+1/2} + \psi_{n,i-1/2}}{2} 
 \,.
   \label{eq:diamondapprox}
 \end{equation}
@@ -231,23 +228,24 @@ for directions with $\mu_n < 0$.
 
 For isotropic scattering, Eq.~\eqref{eq:finitediff} has $L=0$, and simplifies to
 $$
- \mu_n \left[ \psi_{n,i+1} - \psi_{n,i} \right] + \Sigma_{t,i}
-  \int_{x_{i}}^{x_{i+1}} \psi_n(x) \ud x
+ \mu_n \left[ \psi_{n,i+1/2} - \psi_{n,i-1/2} \right] + \Sigma_{t,i}
+  \int_{x_{i-1/2}}^{x_{i+1/2}} \psi_n(x) \ud x
 = \frac{1}{2} \Sigma_{s0,i} 
- \sum_{n'=1}^{N} w_{n'}  \int_{x_{i}}^{x_{i+1}} \psi_{n'}(x) \ud x
+ \sum_{n'=1}^{N} w_{n'}  \int_{x_{i-1/2}}^{x_{i+1/2}} \psi_{n'}(x) \ud x
   + Q_{n,i}  \Delta_i
 $$
 Substituting Eq.~\eqref{eq:diamondapprox} and dividing by $\Delta_i$, we have equations for
-$i=0,\ldots,I-1$ and $n=1,\ldots,N$:
-\begin{equation}
-  \frac{\mu_n}{\Delta_i}  \left[ \psi_{n,i+1} - \psi_{n,i} \right]
-+ \Sigma_{t,i}  \left[ \frac{\psi_{n,i+1} + \psi_{n,i}}{2} \right]
+$i=1,\ldots,I$ and $n=1,\ldots,N$:
+\begin{multline}
+  \frac{\mu_n}{\Delta_i}  \left[ \psi_{n,i+1/2} - \psi_{n,i-1/2} \right]
++ \Sigma_{t,i}  \left[ \frac{\psi_{n,i+1/2} + \psi_{n,i-1/2}}{2} \right]
+\\
 =
 \frac{1}{2} \Sigma_{s0,i}
-\sum_{n'=1}^{N} w_{n'} \left[ \frac{\psi_{n',i+1} + \psi_{n',i}}{2} \right]
+\sum_{n'=1}^{N} w_{n'} \left[ \frac{\psi_{n',i+1/2} + \psi_{n',i-1/2}}{2} \right]
   + Q_{n,i} \,.
   \label{eq:ddfinal}
-\end{equation}
+\end{multline}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Direct matrix representation}
@@ -275,9 +273,9 @@ The source vector will have $I\cdot N$ terms comprising the source for
 each angle $n$ inside each cell $i$, and it will also have $N$ terms for the
 boundary conditions.
 The boundary condition equation for a vacuum boundary on the left side will be:
-$$ \psi_{0,n} = 0 \,, \quad n= N/2 + 1, \ldots, N \,.$$
+$$ \psi_{n,1/2} = 0 \,, \quad n= N/2 + 1, \ldots, N \,.$$
 For a reflecting condition on the right side, it will be:
-$$ \psi_{I,n} - \psi_{I,N+1-n} = 0 \,.$$
+$$ \psi_{n,I+1/2} - \psi_{N+1-n,I+1/2} = 0 \,.$$
 Unless there is a static, known incident flux on the boundary, the additional
 boundary sources on the source vector will therefore be zero.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -291,15 +289,15 @@ source for the new iteration.
 
 One of the distinct advantages of a finite difference formulation of a
 differential equation is that, along each direction $\mu_n$, the SI method
-updates the next spatial point's flux $\psi_{n,i}^{(\ell+1)}$ using only the
-flux at the previous point $\psi_{n,i-1}^{(\ell+1)}$ and the ``known'' source
+updates the next spatial point's flux $\psi_{n,i+1/2}^{(\ell+1)}$ using only the
+flux at the previous point $\psi_{n,i-1/2}^{(\ell+1)}$ and the ``known'' source
 $\tilde{Q}_{i}^{(\ell)}$. To show this, we write Eq.~\eqref{eq:ddfinal} in
 terms of the total source and with iteration indices:
 \begin{subequations}
   \label{eq:dditeration}
 \begin{equation}
-  \frac{\mu_n}{\Delta_i}  \left[ \psi_{n,i+1}^{(\ell+1)} - \psi_{n,i}^{(\ell+1)} \right]
-+ \Sigma_{t,i} \left[ \frac{\psi_{n,i+1}^{(\ell+1)} + \psi_{n,i}^{(\ell+1)}}{2} \right]
+  \frac{\mu_n}{\Delta_i}  \left[ \psi_{n,i+1/2}^{(\ell+1)} - \psi_{n,i-1/2}^{(\ell+1)} \right]
++ \Sigma_{t,i} \left[ \frac{\psi_{n,i+1/2}^{(\ell+1)} + \psi_{n,i-1/2}^{(\ell+1)}}{2} \right]
 = \tilde{Q}_{i}^{(\ell)}
   \label{eq:ddsweep}
 \end{equation}
@@ -308,13 +306,13 @@ and (with isotropic scattering)
  \tilde{Q}_{i}^{(\ell)}
  =
 \frac{1}{2} \Sigma_{s0,i} 
-\left[ \frac{\phi_{i+1}^{(\ell)} + \phi_{i}^{(\ell)}}{2} \right]
+\left[ \frac{\phi_{i+1/2}^{(\ell)} + \phi_{i-1/2}^{(\ell)}}{2} \right]
 + \frac{1}{2} Q_{i}  \,,
   \label{eq:ddsource}
 \end{equation}
 where
 \begin{equation}
-  \phi_{i}^{(\ell)} = \sum_{n'=1}^{N} w_{n'} \psi_{n',i+1}^{(\ell)}
+  \phi_{i+1/2}^{(\ell)} = \sum_{n'=1}^{N} w_{n'} \psi_{n',i+1/2}^{(\ell)}
   \label{eq:phi}
 \end{equation}
 \end{subequations}
@@ -322,23 +320,23 @@ is used to reduce the storage requirements between iterations. [If anisotropic
 scattering is used, higher moments of the flux must also be stored, and then
 the total source $\tilde{Q}_{i}^{(\ell)}$ will be anisotropic as well.]
 
-Solving Eq.~\eqref{eq:ddsweep} for $\psi_{n,i+1}^{(\ell+1)}$,
+Solving Eq.~\eqref{eq:ddsweep} for $\psi_{n,i+1/2}^{(\ell+1)}$,
 \begin{align*}
 %  \left[  \frac{\mu_n}{\Delta_i} + \frac{\Sigma_{t,i}}{2} \right]
-%    \psi_{n,i+1}^{(\ell+1)}
+%    \psi_{n,i+1/2}^{(\ell+1)}
 % + \left[ - \frac{\mu_n}{\Delta_i} + \frac{\Sigma_{t,i}}{2} \right]
-%    \psi_{n,i}^{(\ell+1)}
+%    \psi_{n,i-1/2}^{(\ell+1)}
 %&= \tilde{Q}_{i}^{(\ell)}
 %\\
-%\psi_{n,i+1}^{(\ell+1)} + 
+%\psi_{n,i+1/2}^{(\ell+1)} + 
 %  &= \left( \frac{\mu_n}{\Delta_i} + \frac{\Sigma_{t,i}}{2} \right)^{-1}
 %\left[ \tilde{Q}_{i}^{(\ell)} - \left( - \frac{\mu_n}{\Delta_i} +
-%\frac{\Sigma_{t,i}}{2} \right) \psi_{n,i}^{(\ell+1)} \right]
+%\frac{\Sigma_{t,i}}{2} \right) \psi_{n,i-1/2}^{(\ell+1)} \right]
 %\\
-\psi_{n,i+1}^{(\ell+1)}
+\psi_{n,i+1/2}^{(\ell+1)}
   &= \left( \frac{\mu_n}{\Delta_i} + \frac{\Sigma_{t,i}}{2} \right)^{-1}
 \left[ \left( \frac{\mu_n}{\Delta_i} -
-\frac{\Sigma_{t,i}}{2} \right) \psi_{n,i}^{(\ell+1)}
+\frac{\Sigma_{t,i}}{2} \right) \psi_{n,i-1/2}^{(\ell+1)}
 + \tilde{Q}_{i}^{(\ell)} \right] \,.
 \end{align*}
 So, the angular flux in one direction for a new iteration depends only on the
@@ -351,6 +349,8 @@ from a vacuum boundary, the starting flux is zero. If the sweep starts from a
 reflecting boundary, it is advantageous to perform the sweep for the
 angle opposite to the incoming reflected angle and then to use the ``outgoing''
 angular flux that was just calculated.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Spatial discretizations: finite elements}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \nocite{Lew1984}\nocite{Lar2007}

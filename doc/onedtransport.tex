@@ -1,13 +1,18 @@
-\documentclass[]{SRJcommon}
+\documentclass[11pt]{article}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{One-dimensional computational transport}
 \author{Seth R.~Johnson}
 \date{2008/12/21}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{amsmath}
+\usepackage{bm}      %bold math symbols for vectors
+\usepackage[pdftex]{graphicx}
+\usepackage[width=\columnwidth,font=small,labelfont=bf]{caption}
+\usepackage[width=6.5in,height=9in,centering]{geometry}
+
+\input{SRJinclude}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
- \makeatletter
- \hypersetup{pdfauthor={\@author}, pdftitle={\@title}}
- \makeatother
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \maketitle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -351,6 +356,7 @@ angle opposite to the incoming reflected angle and then to use the ``outgoing''
 angular flux that was just calculated.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Spatial discretizations: finite elements}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \nocite{Lew1984}\nocite{Lar2007}

@@ -1,31 +1,32 @@
 function oneDTransportLD()
-   % SN transport in one dimension, linear discontinuous.
+   % SN transport in one dimension, linear discontinuous finite element
+   % method.
    % Author: Seth R. Johnson
    % Licensed under BSD
    
    % problem data---stuff that is only created once---is global
    global I N mu w delta_x reflect sigma_t sigma_s0 nusigma_f q ;
    
-   I = 10;  % number of spatial cells
+   I = 32;  % number of spatial cells
    N = 4;  % number of discrete ordinates
    
    sigma_t  = createXsn(I, 1.0);
-   sigma_s0 = createXsn(I, 0.0);
-   reflect  = [0 1]; %reflecting bounds on left and right
-   width    = 1.0;
+   sigma_s0 = createXsn(I, 0.5);
+   reflect  = [1 0]; %reflecting bounds on left and right
+   width    = 3.0;
    
    q        = createSource(I, 1.0);
    
-   nusigma_f= createXsn(I, 1.5);
+   nusigma_f= createXsn(I, 0.45);
    
    % change a piece of the cross sections
    %sigma_t(3) = 10;
    %q(3) = 0;
    %   sigma_t(I/2 - I/32 + (1:I/16))   = 15.0;
-   %   q(I/2 - I/32 + (1:I/16))         = 0.0;
+   q(I/2 + (-I/16:I/16))         = 0.0;
    %   sigma_t(240:250) = 10.0;
-   %nusigma_f(I/2 + (1:I/32)) = 0.0;
-   %sigma_t(I/2 + (1:I/32))   = 10.0;
+   %nusigma_f(I/2 + (-I/16:I/16)) = 0.0;
+   sigma_t(I/2 + (-I/16:I/16))   = 1000.0;
    
    [mu w]   = createQuadrature(N);
    delta_x  = createGrid(I, width);
@@ -37,10 +38,10 @@ function oneDTransportLD()
    
    %%% uncomment any of these three lines to run different codes
    
-   %  runTransportMatrixTest()
-   %  runIterateMfpEigenvalues()
-      runSourceDriven();
-   %  runEigenvalue();
+   %runTransportMatrixTest()
+   %runIterateMfpEigenvalues()
+   runSourceDriven();
+   %runEigenvalue();
 end
 
 function runIterateMfpEigenvalues()
@@ -88,7 +89,7 @@ function runTransportMatrixTest()
 end
 
 function runEigenvalue()
-   global I N mu w delta_x;
+   global delta_x;
    
    numEigenvals = 6;
       
@@ -96,39 +97,17 @@ function runEigenvalue()
    transportMatrix = createTransportMatrix() + createBoundariesMatrix();
    fissionMatrix   = createFissionMatrix();
    
-   if (I*N < 150)
-      figure(3)
-      imagesc(fissionMatrix)
-      axis square
-   end
-   
    %%%%% annnnd.... OMG TRANSPORT:
    operator = @(x) transportMatrix\(fissionMatrix * x);
    options.disp = 0;
-   [psi, lambda] = eigs(operator, getNumberOfUnknowns(),...
+   [psis, lambda] = eigs(operator, getNumberOfUnknowns(),...
                         numEigenvals, 'lm', options);
-   
-   %%%%% fix up the eigenvectors
    lambda = diag(lambda);
    
-   phi = zeros(I+1, numEigenvals);
-   % scale the eigenvectors and put them into the flux
-   for i=1:numEigenvals
-      phi(:,i) = discreteToMoment(0, psi(:,i), mu, w);
-      
-      sgn = sign(sum(phi(:,i)));
-      if (sgn == 0)
-         sgn = sign(phi(1,i));
-      end
-      phi(:,i) = phi(:,i) * sgn;
-      phi(:,i) = phi(:,i)./max(phi(:,i)).*lambda(i) ;
-   end
-   
    %%%%% display the results
-   
    figure(1)
    plot(real(lambda), imag(lambda), 'bx')
-   disp(sprintf('dominant eigenvalue: %.4g', lambda(1)))
+   fprintf(1,'dominant eigenvalue: %.4g\n', lambda(1))
    xlabel('Re \lambda')
    ylabel('Im \lambda')
    
@@ -137,7 +116,17 @@ function runEigenvalue()
    grid = [0 cumsum(delta_x)];
    legendText = cell(1, numEigenvals);
    for e = 1:numEigenvals
-      plot(grid, phi(:,e)')
+      [x psi] = convertAngularFlux(grid, psis(:,e));
+      % scale the eigenvalues
+      phi = discreteToMoment(0, psi);
+      sgn = sign(sum(phi(isfinite(phi))));
+      if (sgn == 0)
+         sgn = sign(phi);
+      end
+      phi = phi * sgn;
+      phi = phi./max(phi).*lambda(e) ;
+      
+      plot(x, phi)
       hold all
       legendText{e} = sprintf('%d', e);
    end
@@ -386,13 +375,13 @@ function [transportMatrix] = createTransportMatrix()
 
          
          if (left < 1)
-            fprintf(1,'Left is less than 1: i=%d,n=%d, left=%d',...
+            fprintf(1,'Left is less than 1: i=%d,n=%d, left=%d\n',...
                i,n,left);
             left = 1;
          end
          
          if (right > numUnknowns)
-            fprintf(1,'Right is greater than %d: i=%d,n=%d, left=%d',...
+            fprintf(1,'Right is greater than %d: i=%d,n=%d, left=%d\n',...
                numUnknowns,i,n,right);
             left = 1;
          end
@@ -446,26 +435,29 @@ function [transportMatrix] = createTransportMatrix()
 end
 
 function [fissionMatrix] = createFissionMatrix()
-   global delta_x nusigma_f w N I
+   global nusigma_f w N I massmatrix
    
    numUnknowns  = getNumberOfUnknowns();
    
    fissionMatrix = sparse(numUnknowns, numUnknowns);
    
-   for i = 1:I
-      for n = 1:N
-         r = (i-1)*N + n;
+   for i = 1:I %spatial cell
+      for n = 1:N %ordinate
+         r = ((i-1)*N + (n-1))*2 + N/2; 
          
-         %fission term
-         scatterTerm = nusigma_f(i) * delta_x(i) / 2;
-         for m = 1:N
-            s = (i-1)*N + m;
-            
-            fissionMatrix(r,s + N) = fissionMatrix(r,s + N) ...
-               + scatterTerm * w(m) /2;
-            
-            fissionMatrix(r,s)     = fissionMatrix(r,s) ...
-               + scatterTerm * w(m) /2;
+         for g = 1:2 %basis function, 1 = left, 2 = right
+            %fission term
+            fissionTerm = nusigma_f(i) / 2;
+            for m = 1:N
+               s = ((i-1)*N + (m-1))*2 + N/2;
+               % \Phi_{L,i}
+               fissionMatrix(r+g,s+1)     = fissionMatrix(r+g,s+1) ...
+                  + fissionTerm * massmatrix(g,1) * w(m);
+               
+               % \Phi_{R,i}
+               fissionMatrix(r+g,s+2)     = fissionMatrix(r+g,s+2) ...
+                  + fissionTerm * massmatrix(g,2) *w(m);
+            end         
          end
       end
    end
